@@ -824,8 +824,26 @@ drawbar(Monitor *m)
 		return;
 
 	/* draw status first so it can be overdrawn by tags later */
-	if (m == selmon) { /* status is only drawn on selected monitor */
-		tw = m->ww - drawstatusbar(m, bh, stext);
+	int currect_monitor_index = 0;
+	Monitor *monitor_buffer;
+	for (monitor_buffer = mons; monitor_buffer; monitor_buffer = monitor_buffer->next) {
+		if (m == monitor_buffer)
+			break;
+
+		currect_monitor_index++;
+	}
+
+	char stext_copy[sizeof(stext)];
+	strcpy(stext_copy, stext);
+
+	int section_index = 0;
+	for (char *section = strtok(stext_copy, ";"); section != NULL; section = strtok(NULL, ";")) {
+		if (currect_monitor_index == section_index) {
+			tw = m->ww - drawstatusbar(m, bh, section);
+			break;
+		}
+
+		section_index++;
 	}
 
 	for (c = m->clients; c; c = c->next) {
@@ -893,11 +911,10 @@ enternotify(XEvent *e)
 void
 expose(XEvent *e)
 {
-	Monitor *m;
 	XExposeEvent *ev = &e->xexpose;
 
-	if (ev->count == 0 && (m = wintomon(ev->window)))
-		drawbar(m);
+	if (ev->count == 0)
+		drawbars();
 }
 
 void
@@ -1363,8 +1380,7 @@ propertynotify(XEvent *e)
 		}
 		if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
 			updatetitle(c);
-			if (c == c->mon->sel)
-				drawbar(c->mon);
+			drawbars();
 		}
 		if (ev->atom == netatom[NetWMWindowType])
 			updatewindowtype(c);
@@ -2135,7 +2151,8 @@ updatestatus(void)
 {
 	if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
 		strcpy(stext, "dwm-"VERSION);
-	drawbar(selmon);
+
+	drawbars();
 }
 
 void
