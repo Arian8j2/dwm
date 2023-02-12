@@ -92,7 +92,7 @@ struct Client {
 	int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
 	int bw, oldbw;
 	unsigned int tags;
-	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+	int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen, ignoreminsize;
 	Client *next;
 	Client *snext;
 	Monitor *mon;
@@ -140,6 +140,7 @@ typedef struct {
 	unsigned int tags;
 	int isfloating;
 	int monitor;
+	int ignoreminsize;
 } Rule;
 
 /* function declarations */
@@ -294,6 +295,7 @@ applyrules(Client *c)
 	/* rule matching */
 	c->isfloating = 0;
 	c->tags = 0;
+	c->ignoreminsize = 0;
 	XGetClassHint(dpy, c->win, &ch);
 	class    = ch.res_class ? ch.res_class : broken;
 	instance = ch.res_name  ? ch.res_name  : broken;
@@ -309,6 +311,7 @@ applyrules(Client *c)
 			for (m = mons; m && m->num != r->monitor; m = m->next);
 			if (m)
 				c->mon = m;
+			c->ignoreminsize = r->ignoreminsize;
 		}
 	}
 	if (ch.res_class)
@@ -2133,10 +2136,10 @@ updatesizehints(Client *c)
 		c->maxh = size.max_height;
 	} else
 		c->maxw = c->maxh = 0;
-	if (size.flags & PMinSize) {
+	if (!c->ignoreminsize && size.flags & PMinSize) {
 		c->minw = size.min_width;
 		c->minh = size.min_height;
-	} else if (size.flags & PBaseSize) {
+	} else if (!c->ignoreminsize && size.flags & PBaseSize) {
 		c->minw = size.base_width;
 		c->minh = size.base_height;
 	} else
